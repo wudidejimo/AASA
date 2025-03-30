@@ -1,0 +1,310 @@
+(*-- The channel between U & FN --*)
+free c1: channel.
+(*-- The channel between FN & SN --*)
+free c2: channel.
+
+(*-- The channel between U & RA --*)
+free U2RA: channel [private].
+
+(*-- The channel between SN & RA --*)
+free SN2RA: channel [private].
+
+
+
+(*-- The basic type --*)
+type nonce.
+type timestamp.
+type biometric.
+type entity.
+
+
+
+
+(*-- Variables --*)
+
+free PWi:bitstring[private].
+free RPWi:bitstring[private].
+free IDi:bitstring[private].
+free TIDi:bitstring.
+free IDu:bitstring [private].
+free IDj:bitstring [private].
+free Xfs:bitstring[private].
+free XSj:bitstring[private].
+free ki:bitstring[private].
+free sigma:bitstring[private].
+free S1:bitstring[private].
+free MK:bitstring[private].
+free SK:bitstring[private].
+
+
+
+free U,FN,SN : entity.
+
+
+(*-- Functions --*)
+fun Gen(biometric):bitstring.
+fun Rep(biometric,bitstring):bitstring.
+fun XOR(bitstring,bitstring):bitstring.
+equation forall x:bitstring, y:bitstring; XOR(XOR(x,y),y) = x.
+equation forall x:bitstring, y:bitstring; XOR(XOR(y,x),x) = y.
+fun Shamir(bitstring,bitstring,bitstring,bitstring):bitstring.
+fun hash(bitstring):bitstring.
+fun PUF(bitstring):bitstring.
+fun ModFun(bitstring, nonce): bitstring.
+
+
+
+fun concat1(bitstring,bitstring):bitstring.
+fun concat2(bitstring,bitstring,bitstring):bitstring.
+fun concat3(bitstring,bitstring,bitstring,bitstring):bitstring.
+fun concat4(bitstring,bitstring,bitstring,bitstring,bitstring):bitstring.
+fun concat5(bitstring,bitstring,bitstring,bitstring,bitstring,bitstring):bitstring.
+fun concat6(bitstring,bitstring,bitstring,bitstring,bitstring,bitstring,bitstring):bitstring.
+fun concat7(bitstring,bitstring,bitstring,bitstring,bitstring,bitstring,bitstring,bitstring):bitstring.
+
+(*-- Check timestamp Fresh operation --*)
+fun checktimestampfresh(timestamp, bool): bool
+reduc forall T: timestamp;
+checktimestampfresh(T, true) = true
+otherwise forall T: timestamp;
+checktimestampfresh(T, false) = false.
+
+
+(* Shamir secret sharing with explicit x-coordinates *)
+fun ShamirShare(bitstring, bitstring): bitstring.   (* ShamirShare(secret, x) *)
+fun ShamirRecover(bitstring, bitstring, bitstring, bitstring, bitstring, bitstring, bitstring, bitstring): bitstring.
+(* ShamirRecover(x1, share1, x2, share2, x3, share3, x4, share4) *)
+
+(* Equation expressing correct recovery *)
+equation forall s: bitstring, x1: bitstring, x2: bitstring, x3: bitstring, x4: bitstring;
+  ShamirRecover(x1, ShamirShare(s,x1), x2, ShamirShare(s,x2), x3, ShamirShare(s,x3), x4, ShamirShare(s,x4)) = s.
+
+
+
+(*-- Type conversion --*)
+fun nontobit(nonce): bitstring [data,typeConverter].
+fun timetobit(timestamp): bitstring [data,typeConverter].
+
+ (*create Table*)
+table table1(bitstring,bitstring). 
+table table2(bitstring,bitstring,bitstring,bitstring,bitstring).
+
+ (*eight event*)
+event FN_SN_begin(entity).
+event SN_FN_end(entity).
+event FN_U_begin(entity).
+event U_FN_end(entity).
+event SN_FN_begin(entity).
+event FN_SN_end(entity).
+event U_FN_begin(entity).
+event FN_U_end(entity).
+
+
+
+
+
+
+(*-- Queries --*)
+weaksecret PWi. (*-- Checking password guessing attack --*)
+noninterf S1. (*-- Strong secrecy --*)
+query attacker(SK). 
+query attacker(MK).
+query attacker(PWi).
+query attacker(sigma).
+query attacker(Xfs).
+query attacker(XSj).
+query attacker(IDi).
+query attacker(IDj).
+
+
+
+
+(*correspondence assertions*)
+query t:entity; inj-event(U_FN_end(t)) ==> inj-event(U_FN_begin(t)).
+query t:entity; event(FN_SN_end(t)) ==> event(FN_SN_begin(t)).
+query t:entity; event(FN_U_end(t)) ==> event(FN_U_begin(t)).
+query t:entity; inj-event(SN_FN_end(t)) ==> inj-event(SN_FN_begin(t)).
+
+
+
+
+
+
+
+(*------------------------------ Process Sensor node -------------------------------*)
+
+let procesSN(Req1:bitstring) =
+out (SN2RA,Req1);
+(*--------- SN Registration   ---------*)
+in (SN2RA, (IDj:bitstring,XSj:bitstring,C1:bitstring,C2:bitstring,C3:bitstring,C4:bitstring));
+let R1 = PUF(C1) in
+let R2 = PUF(C2) in
+let R3 = PUF(C3) in
+let R4 = PUF(C4) in
+
+out(SN2RA,(R1,R2,R3,R4));
+in(c2,(X3:bitstring,  V2:bitstring, T2:timestamp, share1:bitstring, share2:bitstring, share3:bitstring, share4:bitstring));
+
+if checktimestampfresh(T2, true) then
+let (r1:nonce,S1:bitstring) = XOR(X3,hash(concat2(XSj,IDj,timetobit(T2)))) in
+let R1 = PUF(C1) in
+let R2 = PUF(C2) in
+let R3 = PUF(C3) in
+let R4 = PUF(C4) in
+let Xfs_1=ShamirRecover(R1,share1,R2,share2,R3,share3,R4,share4) in
+let V22 = hash(concat4(X3,S1,nontobit(r1),Xfs_1,timetobit(T2))) in
+if V22=V2 then
+event FN_SN_begin(FN);  
+new T3: timestamp;
+new r2: nonce;
+new C1_new: bitstring;
+new C2_new: bitstring;
+new C3_new: bitstring;
+new C4_new: bitstring;
+let R1_new = PUF(C1_new) in
+let R2_new = PUF(C2_new) in
+let R3_new = PUF(C3_new) in
+let R4_new = PUF(C4_new) in
+let X4 = XOR(nontobit(r2),hash(concat2(XSj,Xfs_1,timetobit(T3)))) in
+let X5 = XOR(concat3(R1_new,R2_new,R3_new,R4_new),hash(concat2(XSj,Xfs_1,nontobit(r2)))) in
+let SK = hash(concat3(S1, Xfs_1, nontobit(r1),nontobit(r2))) in
+let V3 = hash(concat6(X4, X5, S1, IDj, Xfs_1,SK ,timetobit(T3))) in
+out(c2,(X4,X5,V3,T3));
+event SN_FN_end(SN); 
+0.
+
+(*----------------------------------- Process User --------------------------------------*)
+
+let processU(IDi:bitstring, PWi:bitstring,  BIOi:biometric) =
+(*-- user Registration-- *)
+new alpha:nonce;
+let (sigma:bitstring, tau:bitstring)=Gen(BIOi) in
+let RPWi:bitstring = hash(concat2(IDi,PWi,sigma)) in
+let RPWi_star:bitstring = XOR(RPWi,nontobit(alpha)) in
+
+out (U2RA, (IDi,RPWi_star));
+in(U2RA,(TIDi:bitstring,ki:bitstring,Ai:bitstring));
+
+in (U2RA,IDj:bitstring);
+new n0:nonce;
+let MK_hash = XOR(Ai, RPWi_star) in
+let Ai_star = XOR(Ai, nontobit(alpha)) in
+let ki_star = XOR(ki, XOR(RPWi,sigma)) in 
+let V0 = ModFun(hash(concat3(IDi,RPWi,ki,MK_hash)),n0) in
+
+(*------------User Login-----------*)
+
+event FN_U_begin(FN);  
+let (sigma: bitstring) = Rep(BIOi,tau) in
+let RPWi_star = hash(concat2(IDi,PWi,sigma)) in
+let MK_hash =XOR(Ai,RPWi_star) in
+let ki= XOR(XOR(ki_star,RPWi_star),sigma) in
+let (V00:bitstring) = ModFun(hash(concat3(IDi,RPWi_star,ki,MK_hash)),n0) in
+if V00=V0 then
+new T1: timestamp;
+new r1: nonce;
+let S1= hash(concat2(RPWi_star,MK_hash,timetobit(T1))) in
+let X1= XOR(concat1(nontobit(r1),S1), hash(concat2(TIDi,IDj,timetobit(T1)))) in
+let X2= XOR(concat1(MK_hash,ki),concat2(TIDi,IDj,nontobit(r1))) in
+let V1= hash(concat5(X1,X2,S1,ki,nontobit(r1),timetobit(T1))) in
+
+out(c1,(X1,X2,V1,T1));
+in(c1,(X6:bitstring,V4:bitstring,T4:timestamp));
+
+if checktimestampfresh(T4, true) then   
+let (TIDi_new:bitstring,SK:bitstring) = XOR(X6,hash(concat1(TIDi,S1))) in
+let V44 = hash(concat4(X6,S1,SK,TIDi_new,timetobit(T4))) in
+if V44=V4 then   
+event U_FN_end(U);    
+0.
+        
+(*---------------------------RA: Registration authority-------------------------*)
+
+let processRA(Req:bitstring, MK:bitstring, Xfs:bitstring) =
+
+(*---------------- user---------------*)
+
+in (U2RA, (IDi:bitstring,RPWi_star:bitstring));
+new T0:timestamp;
+new r0:nonce;
+let MK_hash = hash(MK) in
+let TIDi =hash(concat1(IDi,timetobit(T0))) in
+let ki = hash(concat2(TIDi,MK_hash,nontobit(r0))) in
+let Ai = XOR(RPWi_star,MK_hash) in
+insert table1(TIDi,ki);
+out (U2RA,(TIDi,ki,Ai));
+
+(*--------------Sensor node----------*)
+
+in (SN2RA,Req1:bitstring);
+new IDj:bitstring;
+new C1:bitstring;
+new C2:bitstring;
+new C3:bitstring;
+new C4:bitstring;
+let XSj:bitstring = hash(concat1(IDj,MK_hash)) in
+out (SN2RA,(IDj,XSj,C1,C2,C3,C4));
+out (U2RA,(IDj));
+in  (SN2RA,(R1:bitstring,R2:bitstring,R3:bitstring,R4:bitstring));
+let share1 =ShamirShare(Xfs,R1) in
+let share2 =ShamirShare(Xfs,R2) in
+let share3 =ShamirShare(Xfs,R3) in
+let share4 =ShamirShare(Xfs,R4) in
+insert table2(IDj,share1,share2,share3,share4);
+0.
+
+
+(*---------------------------------- Process Fog node ------------------------------------*)
+
+let processFN(IDu:bitstring) =
+in(c1,(X1:bitstring, X2:bitstring,  V1:bitstring, T1:timestamp));
+get table1(=TIDi,ki) in  
+get table2(=IDj,share1,share2,share3,share4) in
+if checktimestampfresh(T1, true) then  
+let (r1:nonce,S1:bitstring) = XOR(X1,hash(concat2(TIDi,IDj,timetobit(T1)))) in
+let (MK_hash:bitstring,ki_2:bitstring)= XOR(X2,concat2(TIDi,IDj,nontobit(r1))) in
+let V11= hash(concat5(X1,X2,S1,ki_2,nontobit(r1), timetobit(T1))) in
+if V11=V1 then
+if ki_2 =ki then
+event SN_FN_begin(SN);
+new T2: timestamp;  
+let XSj = hash(concat1(IDj,MK_hash)) in  
+let X3 = XOR(concat1(nontobit(r1),S1),  hash(concat2(XSj,IDj, timetobit(T2)))) in
+let V2 = hash(concat4(X3,S1,nontobit(r1),Xfs,timetobit(T2))) in
+out(c2,(X3,V2,T2,share1,share2,share3,share4));
+in(c2,(X4:bitstring, X5:bitstring, V3:bitstring, T3:timestamp));
+if checktimestampfresh(T3, true) then
+let nontobit(r2) = XOR(X4,hash(concat2(XSj,Xfs,timetobit(T3)))) in
+let SK = hash(concat3(S1, Xfs, nontobit(r1),nontobit(r2))) in
+let V33 = hash(concat6(X4, X5, S1, IDj, Xfs,SK, timetobit(T3))) in
+if V33 = V3 then
+event FN_SN_end(FN);              
+event U_FN_begin(U);  
+new T4: timestamp;
+let (R1:bitstring,R2:bitstring,R3:bitstring,R4:bitstring)=XOR(X5,hash(concat2(XSj,Xfs,nontobit(r2)))) in
+new Xfs_new:bitstring;
+let TIDi_new = hash(concat2(TIDi,Xfs_new, timetobit(T4))) in
+let X6 = XOR(concat1(TIDi_new,SK),hash(concat1(TIDi,S1))) in
+let V4 = hash(concat4(X6,S1,SK,TIDi_new,timetobit(T4))) in
+out(c1,(X6,V4,T4));
+event FN_U_end(FN); 
+0.
+
+(*-- Main process --*)
+process
+    new BIOi:biometric;
+    new PWi:bitstring;
+    new IDi:bitstring;
+    new IDu:bitstring;
+    new Req:bitstring;
+    new Req1:bitstring;
+    new MK:bitstring;
+    new Xfs:bitstring;
+
+    (*-- For ESL attack check SK --*)
+    in(c1,r1:nonce);
+    in(c1,r2:nonce);
+    in(c2,r1:nonce);
+    in(c2,r2:nonce);
+    ((!(processRA(Req,MK,Xfs))) | (!procesSN(Req1)) | (!processU(IDi, PWi,  BIOi)) | (!processFN(IDu)) |
+     phase 1; out(c1, r1); out(c1, r2);out(c2,r1); out(c2,r2))
