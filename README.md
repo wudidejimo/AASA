@@ -1,1 +1,1 @@
-# AASA:codes for the paper "An Adaptive and Secure Authentication Protocol for Industrial IoT in Complex Environments"
+# AASA:codes for the paper "A Lightweight and Adaptive Authentication and Key Agreement Scheme for Industrial Internet of Things 
