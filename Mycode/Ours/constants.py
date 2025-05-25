@@ -47,7 +47,7 @@
 #   without disclosing the source code of your own applications, or shipping
 #   the MIRACL Core Crypto SDK with a closed source product.     
 
-# fixed constants
+
 
 __all__ = ['WEIERSTRASS', 'EDWARDS', 'MONTGOMERY','D_TYPE','M_TYPE','NEGATIVEX','POSITIVEX','BN','BLS','ECDH_INVALID_PUBLIC_KEY','ECDH_ERROR'] 
 

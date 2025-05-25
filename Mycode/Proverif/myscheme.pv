@@ -5,7 +5,6 @@ free c2: channel.
 
 (*-- The channel between U & RA --*)
 free U2RA: channel [private].
-
 (*-- The channel between SN & RA --*)
 free SN2RA: channel [private].
 
