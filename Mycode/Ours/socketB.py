@@ -18,7 +18,7 @@ R = []
 
 deltT = 1.0
 
-# 初始化阶段 注册阶段
+
 C = [secrets.token_bytes(16).hex() for _ in range(6)]  
 R = [int(get_puf(c), 16)% (10**12) for c in C]  
 
@@ -33,13 +33,13 @@ X_Sj = pickle.loads(NodeB.recv(1024))
 
 
 
-# 接受Msg2==========================================================================
+
 X3, shares, V2, T2 = pickle.loads(NodeB.recv(4096))
 startT1 = time.perf_counter()
 
 
 if time.time()-T2>deltT:
-    raise ValueError("T2过期")
+    raise ValueError("T2out")
 
 
 temp2 = (xor_strings(X3, hash_256(X_Sj, IDj, T2)))
@@ -59,7 +59,7 @@ V2_star = hash_256(X3, S1, r1, Xfs_star, T2)
 
 
 if V2_star != V2:
-    raise ValueError("M2验证失败")
+    raise ValueError("M2fail")
 
 # ==============================================
 r2 = secrets.token_bytes(16).hex()
@@ -68,15 +68,15 @@ T3 = time.time()
 
 
 C_new = [secrets.token_bytes(16).hex() for _ in range(5)] 
-R_new = [get_puf(c) for c in C_new]  # 确保 PUF 返回的是十六进制字符串
+R_new = [get_puf(c) for c in C_new]  
 
-R_new_str = "".join(R_new)  # 拼接成字符串
-
-
+R_new_str = "".join(R_new)  
 
 
 
-# 建立会话密钥
+
+
+
 SK = hash_256(S1, Xfs_star, r1, r2)[:32]
 X4 = xor_strings(r2, hash_256(S1, Xfs_star, T3)[:32])
 X5 = xor_strings(R_new_str, hash_256(S1, Xfs_star, r2))
@@ -85,8 +85,8 @@ print("NodeB_section:",(time.perf_counter()-startT1)*1000)
 
 
 
-# 发送msg3====================================================================================
+
 M3 = [X4, X5, V3, T3]
 NodeB.send(pickle.dumps(M3))
-# 关闭连接
+
 NodeB.close()
