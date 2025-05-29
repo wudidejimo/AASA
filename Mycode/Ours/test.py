@@ -5,7 +5,7 @@ import time
 import secrets
 from FunctionMod import *
 
-import sys   #sys模块提供了一系列有关Python运行环境的变量和函数。
+import sys   
 
 
 
@@ -93,7 +93,7 @@ print("Tcm:",(t2-t1)*1000/100)
 original_value = b"Hello, Secure Key!"
 extractor = FuzzyKeyExtractor()
 
-# 计算 generate() 的时间
+
 t1 = time.perf_counter()
 for _ in range(100):
     key, helpers = extractor.generate(original_value)
@@ -101,7 +101,7 @@ t2 = time.perf_counter()
 # print("Generated Key:", key.hex())
 print("Generate Time(Gen):", (t2 - t1) * 1000 / 100, "ms")
 
-# 计算 reproduce() 的时间
+
 t1 = time.perf_counter()
 for _ in range(100):
     recovered_key = extractor.reproduce(original_value, helpers)
@@ -119,7 +119,7 @@ ss = SecretSharing(secret=secret)
 C = [secrets.token_bytes(16).hex() for _ in range(5)]  
 R = [int(get_puf(c), 16) for c in C] 
 
-# 计算 generate_shares() 的时间
+
 t1 = time.perf_counter()
 for _ in range(100):
     shares = ss.generate_shares(R)
@@ -134,8 +134,8 @@ key = secrets.token_bytes(16).hex()
 iv = secrets.token_bytes(16)
 t1 = time.perf_counter()
 for _ in range(100):
-    encrypted_text = encrypt(text,key,iv)  # 加密 
-    d = decrypt(encrypted_text,key,iv)  # 解密 
+    encrypted_text = encrypt(text,key,iv)  
+    d = decrypt(encrypted_text,key,iv)
 t2 = time.perf_counter()
 print("Tenc:", (t2 - t1) * 1000 / 100/2, "ms")
 
